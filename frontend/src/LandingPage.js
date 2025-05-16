@@ -20,7 +20,7 @@ const LandingPage = () => {
                     <button onClick={() => scrollTo('news')}>Updates</button>
                     <button onClick={() => scrollTo('contact')}>Contact</button>
                     <button onClick={() => navigate('/login')}>Login</button>
-                    <button onClick={() => navigate('/signup')}>Sign Up</button> h
+                    <button onClick={() => navigate('/signup')}>Sign Up</button> 
                 </nav>
             </header>
 

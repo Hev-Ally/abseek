@@ -16,7 +16,8 @@ export default function Register() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    const response = await fetch('http://localhost:8000/api/register/', {
+    // Step 1: Register the user
+    const registerResponse = await fetch('http://localhost:8000/api/register/', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -24,9 +25,28 @@ export default function Register() {
       body: JSON.stringify(formData)
     });
 
-    if (response.ok) {
-      alert('Registration successful!');
-      navigate('/login');
+    if (registerResponse.ok) {
+      // Step 2: Login user immediately after registration
+      const loginResponse = await fetch('http://localhost:8000/api/token/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          username: formData.username,
+          password: formData.password
+        })
+      });
+
+      if (loginResponse.ok) {
+        const data = await loginResponse.json();
+        localStorage.setItem('access', data.access);
+        localStorage.setItem('refresh', data.refresh);
+        alert('Registration and login successful!');
+        navigate('/staff-dashboard');
+      } else {
+        alert('Registered, but login failed.');
+      }
     } else {
       alert('Registration failed. Please check your input.');
     }
@@ -70,3 +90,4 @@ export default function Register() {
     </div>
   );
 }
+
