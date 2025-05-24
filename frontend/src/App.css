@@ -90,3 +90,17 @@ h1 {
   padding: 8px 14px;
   border-radius: 5px;
 }
+
+.count-label {
+  background: rgba(255, 0, 0, 0.8);
+  color: white;
+  border-radius: 50%;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: bold;
+  pointer-events: none;
+}

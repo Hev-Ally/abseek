@@ -1,9 +1,48 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import './StaffDashboard.css';
+import axios from 'axios';
+
+const barangayOptions = [
+    "Antipolo", "Balubal", "Bignay 1", "Bignay 2", "Bucal", "Canda", "Castañas", "Concepcion 1",
+    "Concepcion Banahaw", "Concepcion Palasan", "Concepcion Pinagbakuran", "Gibanga",
+    "Guisguis San Roque", "Guisguis Talon", "Janagdong 1", "Janagdong 2", "Limbon", "Lutucan 1",
+    "Lutucan Bata", "Lutucan Malabag", "Mamala 1", "Mamala 2", "Manggalang 1", "Manggalang Bantilan",
+    "Manggalang Kiling", "Manggalang Tulo-Tulo", "Montecillo", "Morong", "Pili", "Poblacion 1",
+    "Poblacion 2", "Poblacion 3", "Poblacion 4", "Poblacion 5", "Poblacion 6", "Sampaloc 1",
+    "Sampaloc 2", "Sampaloc Bogon", "Santo Cristo", "Talaan Aplaya", "Talaan Pantoc", "Tumbaga 1",
+    "Tumbaga 2"
+];
 
 const StaffDashboard = () => {
     const navigate = useNavigate();
+    const [currentPage, setCurrentPage] = useState(1);
+    const [formData, setFormData] = useState({
+        fullName: '', age: '', gender: '', phoneNumber: '', email: '', address: '', emergencyContact: '',
+        caseId: '', location: '', species: '', dateTime: '', biteSite: '',
+        patientId: '', vaccinationStatus: '', vaccinationDate: ''
+    });
+    const [error, setError] = useState('');
+
+    const personalInfoFields = [
+        { label: 'Full Name', name: 'fullName', type: 'text', required: true },
+        { label: 'Age', name: 'age', type: 'number', required: true },
+        // { label: 'Gender', name: 'gender', type: 'text', required: true },
+        { label: 'Phone Number', name: 'phoneNumber', type: 'text', required: true },
+        { label: 'Email', name: 'email', type: 'email', required: true },
+        { label: 'Address', name: 'address', type: 'text', required: true },
+        { label: 'Emergency Contact', name: 'emergencyContact', type: 'text', required: true },
+    ];
+
+    const incidentInfoFields = [
+        { label: 'Date and Time of Bite Incident', name: 'dateTime', type: 'datetime-local', required: true },
+        // { label: 'Type of Animal', name: 'species', type: 'text', required: true },
+        { label: 'Bite Site', name: 'biteSite', type: 'text', required: true },
+    ];
+
+    const medicalInfoFields = [
+        { label: 'Vaccination Status', name: 'vaccinationStatus', type: 'text', required: true },
+        { label: 'Vaccination Date', name: 'vaccinationDate', type: 'date', required: true },
+    ];
 
     const handleLogout = () => {
         localStorage.removeItem('access');
@@ -11,45 +50,42 @@ const StaffDashboard = () => {
         navigate('/login');
     };
 
-    const [formData, setFormData] = useState({
-        fullName: '',
-        age: '',
-        gender: '',
-        phoneNumber: '',
-        email: '',
-        address: '',
-        emergencyContact: '',
-        caseId: '',
-        location: '',
-        species: '',
-        dateTime: '',
-        biteSite: '',
-        patientId: '',
-        vaccinationStatus: '',
-        vaccinationDate: ''
-    });
-
-    const [error, setError] = useState('');
-
     const handleChange = (e) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
     };
 
-        const handleSaveData = async () => {
-        const requiredFields = [
-            'fullName', 'age', 'gender', 'phoneNumber', 'email', 'address', 'emergencyContact',
-            'caseId', 'location', 'species', 'dateTime', 'biteSite',
-            'patientId', 'vaccinationStatus', 'vaccinationDate'
-        ];
+    const goToNextPage = () => {
+        const requiredFields = currentPage === 1 ? personalInfoFields : incidentInfoFields;
+        const missing = requiredFields.find(field => field.required && !formData[field.name]);
 
-        for (const field of requiredFields) {
-            if (!formData[field]) {
-                setError(`Please fill in the ${field} field.`);
-                return;
-            }
+        if (currentPage === 2 && !formData.location) {
+            setError('Please select a Barangay.');
+            return;
+        }
+
+        if (missing) {
+            setError(`Please fill in the ${missing.label} field.`);
+            return;
         }
 
         setError('');
+        setCurrentPage(currentPage + 1);
+    };
+
+    const goToPreviousPage = () => {
+        setCurrentPage(currentPage - 1);
+        setError('');
+    };
+
+    const handleSaveData = async () => {
+        const allRequiredFields = [...personalInfoFields, ...incidentInfoFields, { name: 'location', label: 'Barangay', required: true }, ...medicalInfoFields];
+        for (const field of allRequiredFields) {
+            console.log(`${field.name} value:`, formData[field.name]);
+            if (!formData[field.name] || formData[field.name].toString().trim() === '') {
+                setError(`Please fill in the ${field.label} field.`);
+                        return;
+                    }
+                }
 
         const payload = {
             personalInfo: {
@@ -62,65 +98,76 @@ const StaffDashboard = () => {
                 emergency_contact: formData.emergencyContact
             },
             incidentData: {
-                case_id: formData.caseId,
+                case_id: crypto.randomUUID(),
                 location: formData.location,
                 species: formData.species,
                 date_time: formData.dateTime,
                 bite_site: formData.biteSite
             },
             patientData: {
-                patient_id: formData.patientId,
+                patient_id: crypto.randomUUID(),
                 vaccination_status: formData.vaccinationStatus,
                 vaccination_date: formData.vaccinationDate
             }
         };
 
+        // Debug logging
+        console.log('API URL:', process.env.REACT_APP_API_URL);
+        console.log('Full URL:', `${process.env.REACT_APP_API_URL}/api/save-data/`);
+        console.log('Payload:', payload);
+
         try {
-            const response = await fetch('http://localhost:8000/api/save-data/', {
-                method: 'POST',
+            // let accessToken = localStorage.getItem('token');
+
+            // Try to send request with current token
+            let response = await axios.post(`${process.env.REACT_APP_API_URL}/api/save-data/`, payload, {
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    // 'Authorization': `Bearer ${accessToken}`
                 },
-                body: JSON.stringify(payload)
+                timeout: 10000 // 10 second timeout
             });
 
-            const data = await response.json();
-            if (response.ok) {
-                alert('Data saved successfully!');
+            console.log('Response:', response);
+
+            const data = response.data;
+
+            if (data.message) {
+                alert(data.message);
                 handleClearForm();
             } else {
                 alert('Error saving data: ' + JSON.stringify(data));
             }
         } catch (err) {
-            console.error('Save error:', err);
-            alert('Network error. Unable to connect to the server.');
+            console.error('Save error details:', err);
+            
+            if (err.code === 'ECONNABORTED') {
+                alert('Request timeout. The server is taking too long to respond.');
+            } else if (err.response) {
+                // The request was made and the server responded with a status code
+                console.error('Response data:', err.response.data);
+                console.error('Response status:', err.response.status);
+                alert(`Server error: ${err.response.status} - ${err.response.data?.detail || err.response.statusText}`);
+            } else if (err.request) {
+                // The request was made but no response was received
+                console.error('No response received:', err.request);
+                alert('No response from server. Check if the server is running and the URL is correct.');
+            } else {
+                // Something happened in setting up the request
+                console.error('Request setup error:', err.message);
+                alert('Error setting up the request: ' + err.message);
+            }
         }
     };
 
-
     const handleClearForm = () => {
         setFormData({
-            fullName: '',
-            age: '',
-            gender: '',
-            phoneNumber: '',
-            email: '',
-            address: '',
-            emergencyContact: '',
-            caseId: '',
-            location: '',
-            species: '',
-            dateTime: '',
-            biteSite: '',
-            patientId: '',
-            vaccinationStatus: '',
-            vaccinationDate: ''
+            fullName: '', age: '', gender: '', phoneNumber: '', email: '', address: '', emergencyContact: '',
+            caseId: '', location: '', species: '', dateTime: '', biteSite: '',
+            patientId: '', vaccinationStatus: '', vaccinationDate: ''
         });
         setError('');
-    };
-
-    const handleViewData = () => {
-        console.log('Form Data:', formData);
+        setCurrentPage(1);
     };
 
     return (
@@ -132,77 +179,107 @@ const StaffDashboard = () => {
 
             {error && <div className="error-message">{error}</div>}
 
-            <h3>Personal Information</h3>
-            <div className="form-group">
-                <label>Full Name:</label>
-                <input name="fullName" value={formData.fullName} onChange={handleChange} />
-            </div>
-            <div className="form-group">
-                <label>Age:</label>
-                <input type="number" name="age" value={formData.age} onChange={handleChange} />
-            </div>
-            <div className="form-group">
-                <label>Gender:</label>
-                <input name="gender" value={formData.gender} onChange={handleChange} />
-            </div>
-            <div className="form-group">
-                <label>Phone Number:</label>
-                <input name="phoneNumber" value={formData.phoneNumber} onChange={handleChange} />
-            </div>
-            <div className="form-group">
-                <label>Email:</label>
-                <input type="email" name="email" value={formData.email} onChange={handleChange} />
-            </div>
-            <div className="form-group">
-                <label>Address:</label>
-                <input name="address" value={formData.address} onChange={handleChange} />
-            </div>
-            <div className="form-group">
-                <label>Emergency Contact:</label>
-                <input name="emergencyContact" value={formData.emergencyContact} onChange={handleChange} />
-            </div>
+            {currentPage === 1 && (
+                <div>
+                    <h3>Personal Information</h3>
+                    {personalInfoFields.map(field => (
+                        <div key={field.name}>
+                            <label>{field.label}:</label>
+                            <input
+                                type={field.type}
+                                name={field.name}
+                                value={formData[field.name]}
+                                onChange={handleChange}
+                                required={field.required}
+                            />
+                        </div>
+                    ))}
 
-            <h3>Incident Information</h3>
-            <div className="form-group">
-                <label>Case ID:</label>
-                <input name="caseId" value={formData.caseId} onChange={handleChange} />
-            </div>
-            <div className="form-group">
-                <label>Date and Time of Bite Incident:</label>
-                <input type="datetime-local" name="dateTime" value={formData.dateTime} onChange={handleChange} />
-            </div>
-            <div className="form-group">
-                <label>Location:</label>
-                <input name="location" value={formData.location} onChange={handleChange} />
-            </div>
-            <div className="form-group">
-                <label>Type of Animal:</label>
-                <input name="species" value={formData.species} onChange={handleChange} />
-            </div>
-            <div className="form-group">
-                <label>Bite Site:</label>
-                <input name="biteSite" value={formData.biteSite} onChange={handleChange} />
-            </div>
+                    {/* Gender select field */}
+                    <div>
+                        <label>Gender:</label>
+                        <select
+                            name="gender"
+                            value={formData.gender}
+                            onChange={handleChange}
+                            required
+                            style={{ maxHeight: '100px', overflowY: 'auto' }} // scrollable if more options added later
+                        >
+                            <option value="">Select Gender</option>
+                            <option value="Male">Male</option>
+                            <option value="Female">Female</option>
+                        </select>
+                    </div>
 
-            <h3>Medical Information</h3>
-            <div className="form-group">
-                <label>Patient ID:</label>
-                <input name="patientId" value={formData.patientId} onChange={handleChange} />
-            </div>
-            <div className="form-group">
-                <label>Vaccination Status:</label>
-                <input name="vaccinationStatus" value={formData.vaccinationStatus} onChange={handleChange} />
-            </div>
-            <div className="form-group">
-                <label>Vaccination Date:</label>
-                <input type="date" name="vaccinationDate" value={formData.vaccinationDate} onChange={handleChange} />
-            </div>
+                    <button onClick={goToNextPage}>Next</button>
+                </div>
+            )}
 
-            <div className="button-group">
-                <button onClick={handleSaveData}>Save All Data</button>
-                <button onClick={handleClearForm}>Clear All Fields</button>
-                <button onClick={handleViewData}>View Console Data</button>
-            </div>
+            {currentPage === 2 && (
+                <div>
+                    <h3>Incident Information</h3>
+                    <div>
+                        <label>Barangay:</label>
+                        <select name="location" value={formData.location} onChange={handleChange} required>
+                            <option value="">Select Barangay</option>
+                            {barangayOptions.map(barangay => (
+                                <option key={barangay} value={barangay}>{barangay}</option>
+                            ))}
+                        </select>
+                    </div>
+                    <div>
+                        <label>Type of Animal:</label>
+                        <select
+                            name="species"
+                            value={formData.species}
+                            onChange={handleChange}
+                            required
+                            style={{ maxHeight: '100px', overflowY: 'auto' }}
+                        >
+                            <option value="">Select Animal</option>
+                            <option value="Dog">Dog</option>
+                            <option value="Cat">Cat</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+
+                    {incidentInfoFields.map(field => (
+                        <div key={field.name}>
+                            <label>{field.label}:</label>
+                            <input
+                                type={field.type}
+                                name={field.name}
+                                value={formData[field.name]}
+                                onChange={handleChange}
+                                required={field.required}
+                            />
+                        </div>
+                    ))}
+                    <button onClick={goToPreviousPage}>Back</button>
+                    <button onClick={goToNextPage}>Next</button>
+                </div>
+            )}
+
+            {currentPage === 3 && (
+                <div>
+                    <h3>Medical Information</h3>
+                    {medicalInfoFields.map(field => (
+                        <div key={field.name}>
+                            <label>{field.label}:</label>
+                            <input
+                                type={field.type}
+                                name={field.name}
+                                value={formData[field.name]}
+                                onChange={handleChange}
+                                required={field.required}
+                            />
+                        </div>
+                    ))}
+                    <button onClick={goToPreviousPage}>Back</button>
+                    <button onClick={handleSaveData}>Save</button>
+                    <button onClick={handleClearForm}>Clear</button>
+                </div>
+            )}
         </div>
     );
 };

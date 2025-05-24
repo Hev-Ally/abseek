@@ -1,9 +1,11 @@
-import Login from './Login';
+import Login from './components/Login';
 import DashBoard from './StaffDashboard';
-import LandingPage from './LandingPage';
-import Register from './Register';
+import LandingPage from './components/LandingPage';
+import Register from './components/Register';
 import './App.css';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import 'leaflet/dist/leaflet.css';
+
 
 function App() {
   return (
